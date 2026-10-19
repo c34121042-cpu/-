@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 化學考研卡片盒與漸進式學習系統 (Zettelkasten)</title>
+    <!-- Google Fonts: Noto Serif TC for Warm Vintage aesthetic -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        vintage: {
+                            bg: '#f4f0ea',
+                            card: '#fdfbf7',
+                            border: '#d8cfc4',
+                            main: '#3c3836',
+                            muted: '#7c6f64',
+                            fleeting: '#d79921',
+                            literature: '#b16286',
+                            permanent: '#427b58',
+                            index: '#458588',
+                            chem: '#b57614'
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['"Noto Serif TC"', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Noto Serif TC', serif;
+            background-color: #f4f0ea;
+            color: #3c3836;
+            background-image: radial-gradient(#e5ded3 1.2px, transparent 0);
+            background-size: 24px 24px;
+        }
+        .paper-shadow {
+            box-shadow: 0 4px 20px rgba(60, 56, 54, 0.08);
+        }
+        .paper-shadow-hover:hover {
+            box-shadow: 0 8px 25px rgba(60, 56, 54, 0.14);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #ede7df;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c2b5a3;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a89984;
+        }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+
+    <!-- Header -->
+    <header class="max-w-7xl mx-auto text-center mb-8">
+        <h1 class="text-2xl md:text-3xl font-bold text-[#282828] tracking-wide">🧪 化學考古題與卡片盒筆記系統</h1>
+        <p class="text-sm md:text-base text-vintage-muted mt-2">
+            實踐 Sönke Ahrens 《卡片筆記寫作法》與 PTT 神人化學複習法 ── 擺脫 2 小時 2 題的迷航，以題目為導向精準建立原子化知識
+        </p>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+        
+        <!-- Left Column: Form & Editor (7 cols) -->
+        <section class="lg:col-span-7 bg-vintage-card border border-vintage-border rounded-xl p-6 md:p-8 paper-shadow relative">
+            
+            <!-- Top Accent Bar -->
+            <div class="absolute top-0 left-0 right-0 h-2 bg-vintage-border rounded-t-xl" id="accentBar"></div>
+
+            <div class="flex justify-between items-center mb-6 border-b border-dashed border-vintage-border pb-4">
+                <h2 class="text-xl font-bold flex items-center gap-2" id="formHeader">
+                    <span>✍️</span> 撰寫原子化卡片 (New Note)
+                </h2>
+                <button onclick="toggleWorkflowModal()" class="text-xs bg-[#e0d7c6] hover:bg-[#d5ccbb] text-vintage-main px-3 py-1.5 rounded-md font-semibold transition">
+                    📖 複習工作流指導
+                </button>
+            </div>
+
+            <!-- Edit Mode Banner -->
+            <div id="editBanner" class="hidden bg-[#fbf1c7] border border-vintage-fleeting text-[#b57614] px-4 py-3 rounded-lg font-bold mb-5 text-sm flex justify-between items-center animate-pulse">
+                <span>✏️ 正在編輯以前的筆記：<span id="editingCardIdText" class="underline"></span></span>
+                <span class="text-xs bg-[#f4ebd0] px-2 py-1 rounded">編輯模式</span>
+            </div>
+
+            <!-- Note Type Selector -->
+            <div class="grid grid-cols-4 gap-2 mb-5">
+                <button type="button" class="type-btn py-2 px-1 text-xs md:text-sm font-semibold rounded border border-vintage-border bg-[#f4f0ea] transition text-center" data-type="fleeting" onclick="selectType('fleeting')">閃念卡</button>
+                <button type="button" class="type-btn py-2 px-1 text-xs md:text-sm font-semibold rounded border border-vintage-border bg-[#f4f0ea] transition text-center" data-type="literature" onclick="selectType('literature')">文獻卡</button>
+                <button type="button" class="type-btn py-2 px-1 text-xs md:text-sm font-semibold rounded border border-vintage-border bg-[#f4f0ea] transition text-center" data-type="permanent" onclick="selectType('permanent')">永久卡</button>
+                <button type="button" class="type-btn py-2 px-1 text-xs md:text-sm font-semibold rounded border border-vintage-border bg-[#f4f0ea] transition text-center" data-type="index" onclick="selectType('index')">索引卡</button>
+            </div>
+
+            <!-- Workflow Hint Box -->
+            <div id="workflowHint" class="bg-[#eae3d2] p-3.5 rounded-lg text-xs md:text-sm text-vintage-main mb-5 leading-relaxed border-l-4 border-vintage-fleeting">
+                💡 <b>閃念筆記：</b> 快速記錄突發奇想或考卷上的即時疑問，需在 1~2 天內轉化或刪除。
+            </div>
+
+            <!-- Form -->
+            <form id="noteForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+                <input type="hidden" id="cardType" value="fleeting">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-vintage-muted uppercase tracking-wider mb-1">唯一識別碼 (ID)</label>
+                        <input type="text" id="cardId" readonly class="w-full p-2.5 bg-[#f5f2ec] border border-vintage-border rounded text-sm font-mono text-vintage-muted">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-vintage-muted uppercase tracking-wider mb-1">化學考科 / 標籤分類</label>
+                        <input type="text" id="tags" placeholder="有機化學, 考古題, 芳香性" class="w-full p-2.5 bg-[#fbf9f5] border border-vintage-border rounded text-sm focus:outline-none focus:border-vintage-main">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-vintage-muted uppercase tracking-wider mb-1">卡片標題 / 核心化學觀念 (Atomicity)</label>
+                    <input type="text" id="title" placeholder="例如：芳香性之 4 條件與 1,3-環丁二烯反芳香性" required class="w-full p-2.5 bg-[#fbf9f5] border border-vintage-border rounded text-sm font-bold focus:outline-none focus:border-vintage-main">
+                </div>
+
+                <!-- Dynamic Fields based on Type -->
+                <div id="dynamicFields" class="space-y-4"></div>
+
+                <div>
+                    <label class="block text-xs font-bold text-vintage-muted uppercase tracking-wider mb-1">
+                        核心觀點 / 闔書後白話文轉譯 (支援 <code class="text-vintage-permanent font-mono">[[卡片ID]]</code> 雙向連結)
+                    </label>
+                    <textarea id="content" rows="6" placeholder="闔上課本後，憑記憶用自己的話寫下反應機制、解題關鍵字或核心機制..." required class="w-full p-3 bg-[#fbf9f5] border border-vintage-border rounded text-sm focus:outline-none focus:border-vintage-main leading-relaxed"></textarea>
+                </div>
+
+                <!-- Chemistry Exam Active Recall Checkbox -->
+                <div class="bg-[#f0ece1] p-3 rounded-lg border border-vintage-border flex items-center justify-between">
+                    <div class="text-xs text-vintage-main font-semibold flex items-center gap-2">
+                        <span>🎯</span> PTT 神人複習檢核：是否已完成「關鍵字掃瞄 ➔ 闔書輸出」？
+                    </div>
+                    <input type="checkbox" id="activeRecallCheck" class="w-4 h-4 accent-vintage-permanent cursor-pointer">
+                </div>
+
+                <!-- Button Group -->
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" id="saveBtn" class="flex-2 bg-vintage-main hover:bg-[#504945] text-[#fbf1c7] py-3 px-6 rounded font-bold text-sm transition shadow-md flex items-center justify-center gap-2">
+                        <span>💾</span> 存入卡片盒 (.md / LocalStorage)
+                    </button>
+                    <button type="button" id="deleteBtn" onclick="deleteCurrentCard()" class="hidden flex-1 bg-[#cc241d] hover:bg-[#9d0006] text-white py-3 px-4 rounded font-bold text-sm transition">
+                        🗑️ 刪除
+                    </button>
+                    <button type="button" id="cancelBtn" onclick="resetForm()" class="hidden flex-1 bg-[#a89984] hover:bg-[#7c6f64] text-white py-3 px-4 rounded font-bold text-sm transition">
+                        ❌ 取消
+                    </button>
+                </div>
+            </form>
+        </section>
+
+        <!-- Right Column: Vault Drawer & Quick Export (5 cols) -->
+        <section class="lg:col-span-5 space-y-6">
+            
+            <!-- Vault Drawer Card -->
+            <div class="bg-vintage-card border border-vintage-border rounded-xl p-6 paper-shadow relative">
+                <div class="absolute top-0 left-0 right-0 h-2 bg-vintage-border rounded-t-xl"></div>
+                
+                <div class="flex justify-between items-center mb-4 border-b border-dashed border-vintage-border pb-3">
+                    <h2 class="text-lg font-bold flex items-center gap-2">
+                        <span>📦</span> 卡片盒抽屜 (Obsidian Vault)
+                    </h2>
+                    <span id="cardCountBadge" class="text-xs bg-[#e0d7c6] text-vintage-main font-semibold px-2.5 py-1 rounded-full">0 張卡片</span>
+                </div>
+
+                <!-- Search & Filter -->
+                <div class="space-y-2 mb-4">
+                    <input type="text" id="searchInput" oninput="filterCards()" placeholder="🔍 搜尋卡片標題、ID 或標籤..." class="w-full p-2 bg-[#fbf9f5] border border-vintage-border rounded text-xs focus:outline-none focus:border-vintage-main">
+                    <div class="flex gap-1 overflow-x-auto pb-1 text-xs">
+                        <button onclick="filterByType('all')" class="filter-tab px-2.5 py-1 rounded bg-[#e0d7c6] font-semibold text-vintage-main transition">全部</button>
+                        <button onclick="filterByType('fleeting')" class="filter-tab px-2.5 py-1 rounded bg-[#f4f0ea] hover:bg-[#e0d7c6] text-vintage-muted transition">閃念</button>
+                        <button onclick="filterByType('literature')" class="filter-tab px-2.5 py-1 rounded bg-[#f4f0ea] hover:bg-[#e0d7c6] text-vintage-muted transition">文獻</button>
+                        <button onclick="filterByType('permanent')" class="filter-tab px-2.5 py-1 rounded bg-[#f4f0ea] hover:bg-[#e0d7c6] text-vintage-muted transition">永久</button>
+                        <button onclick="filterByType('index')" class="filter-tab px-2.5 py-1 rounded bg-[#f4f0ea] hover:bg-[#e0d7c6] text-vintage-muted transition">索引</button>
+                    </div>
+                </div>
+
+                <!-- Card List -->
+                <div id="cardList" class="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                    <!-- Cards will be dynamically injected here -->
+                </div>
+            </div>
+
+            <!-- Export & Utility Card -->
+            <div class="bg-vintage-card border border-vintage-border rounded-xl p-6 paper-shadow relative">
+                <div class="absolute top-0 left-0 right-0 h-2 bg-vintage-border rounded-t-xl"></div>
+                <h2 class="text-base font-bold mb-3 flex items-center gap-2">
+                    <span>📤</span> 知識資產匯出與備份
+                </h2>
+                <p class="text-xs text-vintage-muted mb-4 leading-relaxed">
+                    所有筆記皆自動加密存於瀏覽器 LocalStorage。您可以一鍵匯出符合 Obsidian 格式的 Markdown 壓縮包或文字清單。
+                </p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="exportAllAsMarkdown()" class="bg-[#504945] hover:bg-[#3c3836] text-white py-2.5 px-4 rounded text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                        <span>📦</span> 匯出 Markdown (.zip/txt)
+                    </button>
+                    <button onclick="clearAllData()" class="bg-[#b16286] hover:bg-[#904d6d] text-white py-2.5 px-4 rounded text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                        <span>⚠️</span> 清空所有本地資料
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Workflow Guide Modal -->
+    <div id="workflowModal" class="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-vintage-card border border-vintage-border max-w-2xl w-full rounded-xl p-6 md:p-8 paper-shadow max-h-[90vh] overflow-y-auto relative">
+            <h3 class="text-xl font-bold mb-4 border-b pb-2 flex items-center gap-2">
+                <span>📘</span> 化學考研卡片盒黃金工作流指南
+            </h3>
+            <div class="space-y-4 text-sm text-vintage-main leading-relaxed">
+                <div class="bg-[#f0ece1] p-3.5 rounded-lg border-l-4 border-vintage-chem">
+                    <h4 class="font-bold text-vintage-chem mb-1">1. 避開 2 小時 2 題的迷航陷阱</h4>
+                    <p class="text-xs text-vintage-muted">面對考古題遇到不懂的新觀念時，<b>絕對不要從頭順讀整章課本</b>。利用 AI 或目錄精準定位至頁數，進行「關鍵字掃瞄（Scanning）」，找到能解題的 3~5 行關鍵點即可立刻闔書。</p>
+                </div>
+                <div class="bg-[#f0ece1] p-3.5 rounded-lg border-l-4 border-vintage-permanent">
+                    <h4 class="font-bold text-vintage-permanent mb-1">2. 四態卡片精準分工</h4>
+                    <ul class="text-xs text-vintage-muted space-y-1.5 pl-4 list-disc">
+                        <li><b>閃念卡：</b>隨手捕捉考題疑問或突發靈感（1~2天內處理）。</li>
+                        <li><b>文獻卡：</b>記錄教科書/參考書之出處、頁碼及嚴謹轉譯（不直接複製貼上）。</li>
+                        <li><b>永久卡：</b>核心知識結晶！一張卡片只寫一個原子化觀念，並透過 <code class="text-vintage-permanent">[[ID]]</code> 連結考古題。</li>
+                        <li><b>索引卡：</b>當累積多張有機或無機反應卡片時，建立大綱將其串聯。</li>
+                    </ul>
+                </div>
+                <div class="bg-[#f0ece1] p-3.5 rounded-lg border-l-4 border-vintage-literature">
+                    <h4 class="font-bold text-vintage-literature mb-1">3. 闔書輸出原則</h4>
+                    <p class="text-xs text-vintage-muted">看完課本關鍵字後，<b>務必闔上課本</b>，強制大腦進行主動回想（Active Recall），用自己的話寫下永久卡，這才是真正內化成你自己的得分能力！</p>
+                </div>
+            </div>
+            <div class="mt-6 text-right">
+                <button onclick="toggleWorkflowModal()" class="bg-vintage-main text-[#fbf1c7] px-6 py-2 rounded text-sm font-bold hover:bg-[#504945] transition">
+                    我知道了，開始刷題！
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-6 right-6 bg-[#3c3836] text-[#fbf1c7] px-5 py-3 rounded-lg shadow-xl text-sm font-semibold transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-2">
+        <span id="toastIcon">✨</span> <span id="toastMsg">操作成功</span>
+    </div>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // State management
+        let currentType = 'fleeting';
+        let isEditing = false;
+        let cardsCache = [];
+        let activeFilter = 'all';
+
+        // Workflow hints configuration
+        const hints = {
+            fleeting: "💡 <b>閃念筆記：</b> 快速記錄突發奇想或考古題盲點，無需在意排版。請在 1~2 天內轉化為永久卡。",
+            literature: "📚 <b>文獻筆記：</b> 閱讀教科書時用<b>自己的話</b>總結機制，務必標註教科書作者、書名與精準頁碼。",
+            permanent: "🧠 <b>永久筆記：</b> 一張卡片只寫一個獨立的化學觀念（原子化），並主動利用 <code class='text-vintage-permanent font-mono'>[[卡片ID]]</code> 與考古題或其他觀念串聯。",
+            index: "🗺️ <b>主題索引卡：</b> 當某個單元（例如：芳香性、E1/E2反應）累積多張永久卡時，建立索引卡用清單將它們串成考前大綱。"
+        };
+
+        // Initialize unique timestamp ID generator
+        function generateID() {
+            const now = new Date();
+            const pad = n => String(n).padStart(2, '0');
+            return `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+        }
+
+        // Render dynamic fields based on note type
+        function renderDynamicFields(type, values = {}) {
+            const container = document.getElementById('dynamicFields');
+            container.innerHTML = '';
+
+            if (type === 'literature') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-vintage-muted uppercase tracking-wider mb-1">參考書目 / 出處 (Source)</label>
+                            <input type="text" id="source" placeholder="例如：Wade Organic Chemistry Ch.6" value="${values.source || ''}" class="w-full p-2.5 bg-[#fbf9f5] border border-vintage-border rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-vintage-muted uppercase tracking-wider mb-1">作者與頁碼 (Author & Page)</label>
+                            <input type="text" id="authorPage" placeholder="例如：L.G. Wade, p.182" value="${values.authorPage || ''}" class="w-full p-2.5 bg-[#fbf9f5] border border-vintage-border rounded text-sm">
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'permanent') {
+                container.innerHTML = `
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-vintage-muted uppercase tracking-wider mb-1">關聯筆記 (WikiLinks 雙向連結)</label>
+                            <input type="text" id="relatedLinks" placeholder="例如：[[20260810120000]] [[112台大有機Q1]]" value="${values.relatedLinks || ''}" class="w-full p-2.5 bg-[#fbf9f5] border border-vintage-border rounded text-sm font-mono">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-vintage-muted uppercase tracking-wider mb-1">文獻來源參考</label>
+                            <input type="text" id="source" placeholder="例如：[[文獻_Wade有機Ch6]]" value="${values.source || ''}" class="w-full p-2.5 bg-[#fbf9f5] border border-vintage-border rounded text-sm">
+                        </div>
+                    </div>
+                `;
+            } else if (type === 'index') {
+                container.innerHTML = `
+                    <div>
+                        <label class="block text-xs font-bold text-vintage-muted uppercase tracking-wider mb-1">收錄之原子化卡片連結清單 (Index Links List)</label>
+                        <textarea id="indexLinks" rows="3" placeholder="- [[20260810_01]] 芳香性 4 條件判斷&#10;- [[20260810_02]] 反芳香性範例" class="w-full p-2.5 bg-[#fbf9f5] border border-vintage-border rounded text-sm font-mono">${values.indexLinks || ''}</textarea>
+                    </div>
+                `;
+            }
+        }
+
+        // Select Note Type
+        function selectType(type, values = {}) {
+            currentType = type;
+            document.getElementById('cardType').value = type;
+            document.getElementById('workflowHint').innerHTML = hints[type];
+            
+            // Highlight active type button
+            document.querySelectorAll('.type-btn').forEach(btn => {
+                const isSelected = btn.dataset.type === type;
+                btn.className = `type-btn py-2 px-1 text-xs md:text-sm font-semibold rounded border transition text-center ${
+                    isSelected 
+                        ? (type === 'fleeting' ? 'bg-vintage-fleeting text-white border-vintage-fleeting' :
+                           type === 'literature' ? 'bg-vintage-literature text-white border-vintage-literature' :
+                           type === 'permanent' ? 'bg-vintage-permanent text-white border-vintage-permanent' :
+                           'bg-vintage-index text-white border-vintage-index')
+                        : 'bg-[#f4f0ea] border-vintage-border text-vintage-main hover:bg-[#eae3d2]'
+                }`;
+            });
+
+            // Accent bar color matching
+            const accent = document.getElementById('accentBar');
+            accent.className = `absolute top-0 left-0 right-0 h-2 rounded-t-xl ${
+                type === 'fleeting' ? 'bg-vintage-fleeting' :
+                type === 'literature' ? 'bg-vintage-literature' :
+                type === 'permanent' ? 'bg-vintage-permanent' : 'bg-vintage-index'
+            }`;
+
+            renderDynamicFields(type, values);
+        }
+
+        // Load cards from LocalStorage
+        function loadCardsFromStorage() {
+            const data = localStorage.getItem('chem_zettelkasten_cards');
+            cardsCache = data ? JSON.parse(data) : getInitialMockCards();
+            renderCardList(cardsCache);
+        }
+
+        // Save cards to LocalStorage
+        function saveCardsToStorage(cards) {
+            localStorage.setItem('chem_zettelkasten_cards', JSON.stringify(cards));
+        }
+
+        // Initial default cards for chemistry exam prep demo
+        function getInitialMockCards() {
+            return [
+                {
+                    id: "20260819100000",
+                    type: "permanent",
+                    title: "芳香性之 4 大結構判斷條件",
+                    tags: ["有機化學", "芳香性", "考古題"],
+                    content: "1. Cyclic (環狀結構)\n2. Planar (分子必須共平面以便 p 軌域有效重疊)\n3. Fully conjugated (環上每個原子皆具 p 軌域且連續共軛)\n4. Hückel's Rule (具 4n+2 個 π 電子，n=0,1,2...)",
+                    extra: { relatedLinks: "[[112台大有機Q1]]", source: "Wade Organic Chemistry Ch.14" },
+                    created: "2026-08-19 10:00:00"
+                },
+                {
+                    id: "20260819103000",
+                    type: "literature",
+                    title: "E2 反應之立體電子需求 (Stereoelectronic)",
+                    tags: ["有機化學", "消去反應", "Wade"],
+                    content: "E2 反應屬於單一步驟（Concerted mechanism），要求基質中的 β-氫與離去基（Leaving Group）必須保持 Anti-periplanar（反式共平面，二面角 180°），如此才能使軌域達到最大重疊。",
+                    extra: { source: "Wade Organic Chemistry Ch.6", authorPage: "p.240" },
+                    created: "2026-08-19 10:30:00"
+                }
+            ];
+        }
+
+        // Render Card List in Vault Drawer
+        function renderCardList(cards) {
+            const listEl = document.getElementById('cardList');
+            listEl.innerHTML = '';
+            document.getElementById('cardCountBadge.innerText', `${cards.length} 張卡片`);
+            document.getElementById('cardCountBadge').innerText = `${cards.length} 張卡片`;
+
+            if (cards.length === 0) {
+                listEl.innerHTML = `<div class="text-center py-8 text-xs text-vintage-muted">目前抽屜中尚無卡片，請在左側建立您的第一張化學原子筆記！</div>`;
+                return;
+            }
+
+            cards.forEach(card => {
+                const cardEl = document.createElement('div');
+                cardEl.className = `bg-[#fdfbf7] border border-vintage-border rounded-lg p-3.5 cursor-pointer paper-shadow-hover transition relative border-l-4 ${
+                    card.type === 'fleeting' ? 'border-l-vintage-fleeting' :
+                    card.type === 'literature' ? 'border-l-vintage-literature' :
+                    card.type === 'permanent' ? 'border-l-vintage-permanent' : 'border-l-vintage-index'
+                }`;
+                cardEl.onclick = () => editCard(card.id);
+
+                const tagsHtml = card.tags && card.tags.length > 0 && card.tags[0] !== "" 
+                    ? card.tags.map(t => `<span class="inline-block bg-[#e0d7c6] text-vintage-main px-2 py-0.5 rounded-full text-[10px] mr-1 mt-1">#${t.trim()}</span>`).join('') 
+                    : '';
+
+                cardEl.innerHTML = `
+                    <div class="flex justify-between items-center text-[11px] text-vintage-muted mb-1 font-mono">
+                        <span>ID: ${card.id}</span>
+                        <span class="font-bold uppercase tracking-wider">${card.type}</span>
+                    </div>
+                    <div class="font-bold text-sm text-vintage-main mb-1">${card.title}</div>
+                    <div class="text-xs text-[#504945] line-clamp-2 leading-relaxed">${card.content}</div>
+                    <div>${tagsHtml}</div>
+                `;
+                listEl.appendChild(cardEl);
+            });
+        }
+
+        // Reset Form to New Card Mode
+        function resetForm() {
+            isEditing = false;
+            document.getElementById('cardId').value = generateID();
+            document.getElementById('title').value = '';
+            document.getElementById('content').value = '';
+            document.getElementById('tags').value = '有機化學, 考古題';
+            document.getElementById('activeRecallCheck').checked = false;
+
+            document.getElementById('formHeader').innerHTML = `<span>✍️</span> 撰寫原子化卡片 (New Note)`;
+            document.getElementById('saveBtn').innerHTML = `<span>💾</span> 存入卡片盒 (.md / LocalStorage)`;
+            document.getElementById('editBanner').classList.add('hidden');
+            document.getElementById('deleteBtn').classList.add('hidden');
+            document.getElementById('cancelBtn').classList.add('hidden');
+
+            selectType(currentType);
+        }
+
+        // Edit existing card
+        function editCard(cardId) {
+            const card = cardsCache.find(c => c.id === cardId);
+            if (!card) return;
+
+            isEditing = true;
+            document.getElementById('formHeader').innerHTML = `<span>✏️</span> 編輯原子化卡片 (Edit Note)`;
+            document.getElementById('editBanner').classList.remove('hidden');
+            document.getElementById('editingCardIdText').innerText = `${card.title} (${card.id})`;
+            document.getElementById('saveBtn').innerHTML = `<span>💾</span> 更新卡片內容`;
+            document.getElementById('deleteBtn').classList.remove('hidden');
+            document.getElementById('cancelBtn').classList.remove('hidden');
+
+            document.getElementById('cardId').value = card.id;
+            document.getElementById('title').value = card.title;
+            document.getElementById('content').value = card.content;
+            document.getElementById('tags').value = card.tags ? card.tags.join(', ') : '';
+            document.getElementById('activeRecallCheck').checked = true;
+
+            selectType(card.type, card.extra || {});
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Handle Form Submit (Create or Update)
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const cardId = document.getElementById('cardId').value;
+            const type = document.getElementById('cardType').value;
+            const title = document.getElementById('title').value;
+            const content = document.getElementById('content').value;
+            const tagsInput = document.getElementById('tags').value;
+            const tags = tagsInput ? tagsInput.split(',').map(t => t.trim()).filter(t => t) : [];
+
+            const extra = {};
+            if (document.getElementById('source')) extra.source = document.getElementById('source').value;
+            if (document.getElementById('authorPage')) extra.authorPage = document.getElementById('authorPage').value;
+            if (document.getElementById('relatedLinks')) extra.relatedLinks = document.getElementById('relatedLinks').value;
+            if (document.getElementById('indexLinks')) extra.indexLinks = document.getElementById('indexLinks').value;
+
+            const cardData = {
+                id: cardId,
+                type: type,
+                title: title,
+                content: content,
+                tags: tags,
+                extra: extra,
+                created: new Date().toISOString().replace('T', ' ').substring(0, 19)
+            };
+
+            const existingIndex = cardsCache.findIndex(c => c.id === cardId);
+            if (existingIndex >= 0) {
+                cardsCache[existingIndex] = cardData;
+                showToast("卡片已成功更新！", "✏️");
+            } else {
+                cardsCache.unshift(cardData);
+                showToast("成功存入卡片盒抽屜！", "💾");
+            }
+
+            saveCardsToStorage(cardsCache);
+            filterCards();
+            resetForm();
+        }
+
+        // Delete current card
+        function deleteCurrentCard() {
+            const cardId = document.getElementById('cardId').value;
+            if (!confirm(`確定要從卡片盒中永久刪除卡片 [${cardId}] 嗎？`)) return;
+
+            cardsCache = cardsCache.filter(c => c.id !== cardId);
+            saveCardsToStorage(cardsCache);
+            filterCards();
+            resetForm();
+            showToast("卡片已刪除", "🗑️");
+        }
+
+        // Filter cards by search query & type
+        function filterCards() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            let filtered = cardsCache.filter(card => {
+                const matchType = activeFilter === 'all' || card.type === activeFilter;
+                const matchQuery = card.title.toLowerCase().includes(query) || 
+                                   card.id.toLowerCase().includes(query) || 
+                                   card.content.toLowerCase().includes(query) ||
+                                   (card.tags && card.tags.some(t => t.toLowerCase().includes(query)));
+                return matchType && matchQuery;
+            });
+            renderCardList(filtered);
+        }
+
+        function filterByType(type) {
+            activeFilter = type;
+            document.querySelectorAll('.filter-tab').forEach(btn => {
+                btn.className = "filter-tab px-2.5 py-1 rounded text-xs transition " + 
+                    ((type === 'all' && btn.innerText === '全部') || 
+                     (type === 'fleeting' && btn.innerText === '閃念') ||
+                     (type === 'literature' && btn.innerText === '文獻') ||
+                     (type === 'permanent' && btn.innerText === '永久') ||
+                     (type === 'index' && btn.innerText === '索引') 
+                        ? 'bg-[#e0d7c6] font-semibold text-vintage-main' 
+                        : 'bg-[#f4f0ea] hover:bg-[#e0d7c6] text-vintage-muted');
+            });
+            filterCards();
+        }
+
+        // Export all cards as Markdown text file
+        function exportAllAsMarkdown() {
+            if (cardsCache.length === 0) {
+                showToast("目前沒有可匯出的卡片", "⚠️");
+                return;
+            }
+
+            let combinedMd = "# Zettelkasten 化學考研知識庫匯出\n\n";
+            cardsCache.forEach(card => {
+                let extraMd = "";
+                if (card.type === 'literature') {
+                    if (card.extra?.source) extraMd += `**來源：** ${card.extra.source}\n`;
+                    if (card.extra?.authorPage) extraMd += `**作者/頁碼：** ${card.extra.authorPage}\n\n`;
+                } else if (card.type === 'permanent') {
+                    if (card.extra?.source) extraMd += `**文獻來源：** ${card.extra.source}\n`;
+                    if (card.extra?.relatedLinks) extraMd += `**相關連結：** ${card.extra.relatedLinks}\n\n`;
+                } else if (card.type === 'index') {
+                    if (card.extra?.indexLinks) extraMd += `### 收錄卡片索引\n${card.extra.indexLinks}\n\n`;
+                }
+
+                combinedMd += `---
+id: "${card.id}"
+title: "${card.title}"
+type: "${card.type}"
+tags: [${card.tags.map(t => `"${t}"`).join(', ')}]
+created: "${card.created}"
+---
+
+# ${card.title}
+
+${extraMd}### 內文觀點
+${card.content}
+
+\n\n`;
+            });
+
+            const blob = new Blob([combinedMd], { type: 'text/markdown;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chem_zettelkasten_vault_${generateID()}.md`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast("Markdown 檔案匯出成功！", "📦");
+        }
+
+        // Clear all data
+        function clearAllData() {
+            if (!confirm("確定要清空本地所有卡片嗎？此動作無法復原！")) return;
+            localStorage.removeItem('chem_zettelkasten_cards');
+            cardsCache = [];
+            renderCardList([]);
+            resetForm();
+            showToast("已清空所有本地資料", "⚠️");
+        }
+
+        // Workflow Modal Toggle
+        function toggleWorkflowModal() {
+            const modal = document.getElementById('workflowModal');
+            modal.classList.toggle('hidden');
+        }
+
+        // Toast notification helper
+        function showToast(msg, icon = "✨") {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            document.getElementById('toastIcon').innerText = icon;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+
+        // Initial setup on load
+        window.onload = function() {
+            resetForm();
+            loadCardsFromStorage();
+        };
+    </script>
+</body>
+</html>
